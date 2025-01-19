@@ -128,3 +128,14 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+/backend/node_modules
+/backend/.env
+/backend/dist
+/backend/storage
+# Ignore all files in prisma folder except schema.prisma
+/backend/prisma/*
+!/backend/prisma/schema.prisma
+/frontend/node_modules
+/frontend/.next
+/frontend/.env
