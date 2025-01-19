@@ -113,7 +113,6 @@ export default function TodoList() {
 
   useEffect(() => {
     WebSocket.on("refetchTodo", () => {
-      console.log("Refetching todo...");  
       const loadingToast = toast.loading("Fetching new todo...");
       refetch()
       toast.dismiss(loadingToast);

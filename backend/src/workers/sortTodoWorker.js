@@ -28,8 +28,6 @@ async function sortTodo() {
       },
     ];
 
-    console.log('Generating sorted todos...', messages[1].content);
-
     const generator = await pipeline(
       'text-generation',
       'onnx-community/Qwen2.5-0.5B-Instruct'
