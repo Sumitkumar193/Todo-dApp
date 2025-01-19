@@ -42,9 +42,9 @@
  */
 
 require('dotenv').config();
-const { BLOCKCHAIN_HOST, BLOCKCHAIN_PORT, BLOCKCHAIN_NETWORK } = process.env;
-
-// const HDWalletProvider = require('@truffle/hdwallet-provider');
+const { BLOCKCHAIN_HOST, BLOCKCHAIN_PORT, BLOCKCHAIN_NETWORK, INFURA_API_KEY, PRIVATE_KEY } = process.env;
+const HDWalletProvider = require('@truffle/hdwallet-provider');
+const { skip } = require('node:test');
 
 module.exports = {
   contracts_directory: "./src/blockchain/contracts",
@@ -85,13 +85,24 @@ module.exports = {
     //
     // Useful for deploying to a public network.
     // Note: It's important to wrap the provider as a function to ensure truffle uses a new provider every time.
-    // goerli: {
-    //   provider: () => new HDWalletProvider(MNEMONIC, `https://goerli.infura.io/v3/${PROJECT_ID}`),
-    //   network_id: 5,       // Goerli's id
-    //   confirmations: 2,    // # of confirmations to wait between deployments. (default: 0)
-    //   timeoutBlocks: 200,  // # of blocks before a deployment times out  (minimum/default: 50)
-    //   skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
-    // },
+    goerli: {
+      provider: () => new HDWalletProvider(MNEMONIC, `https://goerli.infura.io/v3/${PROJECT_ID}`),
+      network_id: 5,       // Goerli's id
+      confirmations: 2,    // # of confirmations to wait between deployments. (default: 0)
+      timeoutBlocks: 200,  // # of blocks before a deployment times out  (minimum/default: 50)
+      skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
+    },
+    sepolia: {
+      provider: () => {
+        return new HDWalletProvider(PRIVATE_KEY, `wss://ethereum-sepolia-rpc.publicnode.com`); // GET RPC FROM https://chainlist.org/chain/11155111
+      },
+      network_id: 11155111,      // Sepolia's network ID
+      confirmations: 2,          // # of confirmations to wait between deployments
+      skipDryRun: true,          // Skip dry run before migrations? (default: false for public nets)
+      pollingInterval: 150000,    // Polling interval used for deployment
+      disableConfirmationListener: true,
+      websocket: true
+    },
     //
     // Useful for private networks
     // private: {
@@ -110,14 +121,13 @@ module.exports = {
   compilers: {
     solc: {
       version: "0.8.0",      // Fetch exact version from solc-bin (default: truffle's version)
-      // docker: true,        // Use "0.5.1" you've installed locally with docker (default: false)
-      // settings: {          // See the solidity docs for advice about optimization and evmVersion
-      //  optimizer: {
-      //    enabled: false,
-      //    runs: 200
-      //  },
+      settings: {          // See the solidity docs for advice about optimization and evmVersion
+       optimizer: {
+         enabled: false,
+         runs: 200
+       },
       //  evmVersion: "byzantium"
-      // }
+      }
     }
   },
 
