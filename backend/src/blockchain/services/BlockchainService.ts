@@ -24,6 +24,10 @@ class BlockchainService {
       BlockchainService.instance = new Web3(
         (process.env.BLOCKCHAIN_URL as string) ?? 'http://localhost:7545',
       );
+      if (!!process.env.PRIVATE_KEY) {
+        const account = BlockchainService.instance.eth.accounts.privateKeyToAccount(process.env.PRIVATE_KEY);
+        BlockchainService.instance.eth.accounts.wallet.add(account);
+      }
       BlockchainService.instance.eth.handleRevert = true;
     }
 
@@ -37,11 +41,14 @@ class BlockchainService {
 
     return contract;
   }
-
+    
   private static async getAccounts() {
-    const web3 = this.getInstance();
-    const call = await web3.eth.getAccounts();
-    return call;
+    const web3 = BlockchainService.getInstance();
+    const account = web3.eth.accounts.wallet[0];
+    if (!account) {
+      throw new Error('No account found in wallet. Check your private key.');
+    }
+    return [account.address];
   }
 
   static async getStatus(id: string): Promise<TodoStatus> {
