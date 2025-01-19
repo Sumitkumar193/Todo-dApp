@@ -8,25 +8,34 @@ async function sortTodo() {
       { role: 'system', content: 'You are a helpful assistant.' },
       {
         role: 'user',
-        content: `I need help with my todo list. I have ${todos.length} todos.
-          Here are the todos with their topics and ids:
+        content: `Here is a list of todos:
+
           [
             ${todos.map((todo) => `"Topic": "${todo.title}", "ID": "${todo.id}"`).join(', \n')}
           ]
-          Can you help me rearrange the arrays according to the priorities of the todos titles?
+          
+          Rearrange these todos by priority (high to low). Return the sorted list in JSON format.
 
-          NOTE: ONLY RETURN JSON WITH REARRANGED OBJECTS IN DESCENDING ORDER (High to Low). 
-                DO NOT ADD ANY ADDITIONAL INFORMATION OR COMMENTS AND ONLY RETURN THE GIVEN TOPICS.
-          Example: [{ "Topic": "Todo 1", "ID": "1" }, { "Topic": "Todo 2", "ID": "2" }]`,
+          NOTE: 
+          1. Do not add any new IDs or items. Only use the ones provided.
+          2. Return exactly all 7 todos in descending order.
+          3. The output format should be:
+          [
+            { "Topic": "Topic 1", "ID": "ID 1" },
+            { "Topic": "Topic 2", "ID": "ID 2" },
+            ...
+          ]`,
       },
     ];
 
+    console.log('Generating sorted todos...', messages[1].content);
+
     const generator = await pipeline(
       'text-generation',
-      'onnx-community/Llama-3.2-1B-Instruct',
+      'onnx-community/Qwen2.5-0.5B-Instruct'
     );
 
-    const output = await generator(messages, { max_new_tokens: 512 });
+    const output = await generator(messages, { max_new_tokens: 1024, temperature: 0.7 });
     const result = output[0].generated_text.at(-1).content;
     parentPort.postMessage(result);
   } catch (error) {

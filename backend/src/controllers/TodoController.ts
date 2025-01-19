@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Prisma, Role } from '@prisma/client';
+import { Prisma, Role, ToDo } from '@prisma/client';
 import ApiException from '../errors/ApiException';
 import prisma from '../database/Prisma';
 import validate from '../services/ValidationService';
@@ -7,6 +7,7 @@ import { createTodoValidation } from '../validations/TodoValidation';
 import BlockchainService from '../blockchain/services/BlockchainService';
 import Socket from '../services/Socket';
 import sortTodo from '../services/AiService';
+import JsonParser from '../services/JsonParser';
 
 export async function get(req: Request, res: Response) {
   try {
@@ -15,7 +16,7 @@ export async function get(req: Request, res: Response) {
 
     const where: Prisma.ToDoWhereInput = {};
     const orderBy: Prisma.ToDoOrderByWithRelationInput = {
-      createdAt: 'desc',
+      order: 'desc',
     };
 
     if (user.roles !== Role.ADMIN) {
@@ -45,14 +46,12 @@ export async function get(req: Request, res: Response) {
       },
     });
   } catch (error) {
-    if (error instanceof ApiException) {
-      return res.status(error.status).json({
-        success: false,
-        message: error.message,
-        errors: error.data,
-      });
-    }
-    throw error;
+    console.error(error);
+    Socket.emitToUser(req.body.user.id, 'notification', { message: 'Failed to fetch todos', type: 'error' });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch todos',
+    });
   }
 }
 
@@ -84,14 +83,12 @@ export async function validateStatus(req: Request, res: Response) {
       },
     });
   } catch (error) {
-    if (error instanceof ApiException) {
-      return res.status(error.status).json({
-        success: false,
-        message: error.message,
-        errors: error.data,
-      });
-    }
-    throw error;
+    console.error(error);
+    Socket.emitToUser(req.body.user.id, 'notification', { message: 'Failed to verify todos', type: 'error' });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to verify todos',
+    });
   }
 }
 
@@ -121,7 +118,7 @@ export async function create(req: Request, res: Response) {
     });
 
     await BlockchainService.createTask(todo.id);
-    Socket.emit('refetchTodo', {});
+    Socket.emitToUser(user.id, 'refetchTodo', {});
 
     return res.status(201).json({
       success: true,
@@ -129,14 +126,12 @@ export async function create(req: Request, res: Response) {
       data: todo,
     });
   } catch (error) {
-    if (error instanceof ApiException) {
-      return res.status(error.status).json({
-        success: false,
-        message: error.message,
-        errors: error.data,
-      });
-    }
-    throw error;
+    console.error(error);
+    Socket.emitToUser(req.body.user.id, 'notification', { message: 'Failed to create todos', type: 'error' });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to create todos',
+    });
   }
 }
 
@@ -179,13 +174,79 @@ export async function update(req: Request, res: Response) {
       data: updatedTodo,
     });
   } catch (error) {
-    if (error instanceof ApiException) {
-      return res.status(error.status).json({
-        success: false,
-        message: error.message,
-        errors: error.data,
-      });
-    }
-    throw error;
+    console.error(error);
+    Socket.emitToUser(req.body.user.id, 'notification', { message: 'Failed to update todos', type: 'error' });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update todos',
+    });
+  }
+}
+
+export async function prioritize(req: Request, res: Response) {
+  try {
+    const { user } = req.body;
+
+    const where: Prisma.ToDoWhereInput = {
+      user: {
+        id: user.id,
+      }
+    };
+
+    const orderBy: Prisma.ToDoOrderByWithRelationInput = {
+      createdAt: 'desc',
+    };
+
+    const todos = await prisma.toDo.findMany({
+      where,
+      include: { user: true },
+      orderBy,
+    });
+
+    const sortedTodos = await sortTodo(todos);
+    const parse = JsonParser(sortedTodos);
+    const toUpdate: Promise<ToDo>[] = [];
+
+    const existingTodos = await prisma.toDo.findMany({
+      where: {
+        id: {
+          in: parse.map((todo: { ID: string }) => todo.ID),
+        },
+      },
+    });
+
+    const existingTodoIds = new Set(existingTodos.map(todo => todo.id));
+
+    // Filter parsed todos to include only those that exist
+    parse.forEach(async (todo: { ID: string }, index: number) => {
+      if (existingTodoIds.has(todo.ID)) {
+        toUpdate.push(
+          prisma.toDo.update({
+            where: {
+              id: todo.ID,
+            },
+            data: {
+              order: parse.length - index,
+            },
+          }),
+        );
+      }
+    });
+
+    await Promise.all(toUpdate);
+
+    Socket.emitToUser(user.id, 'refetchTodo', {});
+
+    return res.status(200).json({
+      success: true,
+      message: 'Todos prioritized',
+    });
+  } catch (error) {
+    console.error(error);
+    Socket.emitToUser(req.body.user.id, 'notification', { message: 'Failed to prioritize todos', type: 'error' });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to prioritize todos',
+    });
   }
 }

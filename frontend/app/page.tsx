@@ -6,6 +6,7 @@ import LoginSignup from "./components/LoginSignup";
 import TodoList from "./components/TodoList";
 import WebSocket from "@/app/socket/Socket";
 import Header from "./components/Header";
+import toast from "react-hot-toast";
 
 export default function Home() {
   const [user, setUser] = useRecoilState(userState);
@@ -20,6 +21,15 @@ export default function Home() {
         setUser({ name: data.name, email: data.email });
       }
     });
+
+    WebSocket.on("notification", (data: { message: string, type?: string }) => {
+      if (data.type === "error") {
+        toast.error(data.message);
+      }
+      if (data.type === "success") {
+        toast.success(data.message);
+      }
+    })
   }, [WebSocket]);
 
   return (

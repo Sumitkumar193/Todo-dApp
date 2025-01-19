@@ -41,6 +41,8 @@ export default function TodoList() {
     queryFn: fetchTodo,
     enabled: isLoggedIn,
     select: (data) => data.data.data.todos,
+    gcTime: 60 * 60 * 24 * 1000,
+    staleTime: 60 * 60 * 24 * 1000,
   });
 
   const UpdateTodo = useMutation({

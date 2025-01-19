@@ -81,6 +81,17 @@ export const deleteTodoMutation = async (data: {
   }
 }
 
+export const prioritizeTodoMutation = async () => {
+  try {
+    const response = await axios.post(
+      process.env.NEXT_PUBLIC_API_URL + `/todos/p/prioritize`
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error("Error prioritizing todo");
+  }
+}
+
 export const loginMutation = async (data: {
   email: string;
   password: string;
